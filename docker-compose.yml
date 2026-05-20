@@ -10,6 +10,5 @@ services:
       - N8N_FILE_STORAGE_ENABLED=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
-      - ./.n8n:/home/node/.n8n              # Persistent n8n data (workflows, settings)
-      - ./:/home/node/.n8n-files            # Project files (CSV, prompts)
+      - ./:/home/node/.n8n-files
     restart: unless-stopped

@@ -13,8 +13,7 @@ Step 4 complete - CSV parsing workflow created and ready for import into n8n.
 
 ## Key Decisions
 - Using Docker Compose for n8n (consistent environment)
-- **Persistent .n8n/ folder**: Workflows auto-load, no manual import for evaluator
-- API key in .env file (security best practice, included for evaluator)
+- API key in .env file (security best practice, never committed)
 - Environment variable {{$env.GEMINI_API_KEY}} in workflow (no hardcoded secrets)
 - Using gemini-2.5-flash-lite model
 - Dual-layer fraud detection (LLM + keywords)
@@ -30,7 +29,6 @@ Step 4 complete - CSV parsing workflow created and ready for import into n8n.
 - Added edge case handling for empty/vague tickets
 - Fixed n8n file access: replaced Read Binary File node with Code node (bypasses security restrictions)
 - Code node uses Node.js fs module to read CSV directly from `/files/input/tickets.csv`
-- **Architecture improved**: Added persistent .n8n/ mount so workflow persists across restarts (no manual import for evaluator)
 
 ## Next Step
 Step 5: Test with ONE ticket to Gemini
