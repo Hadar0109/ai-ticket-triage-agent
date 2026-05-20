@@ -1,15 +1,16 @@
 # AU10TIX Assignment Progress
 
-Last updated: Tuesday, May 19, 2026 6:09 PM
+Last updated: Wednesday, May 20, 2026 2:54 PM
 
 ## Current Status
-Step 4 complete - CSV parsing workflow created and ready for import into n8n.
+Step 5 in progress - Testing with ONE ticket to Gemini API
 
 ## Completed Milestones
 - Step 1: Folders created (input/, output/, prompts/, n8n/, docs/)
 - Step 2: Prompt files created with strengthened fraud detection logic
 - Step 3: n8n running in Docker with workspace mounted at /data
-- Step 4: CSV ingestion workflow created (n8n/ticket_triage_csv_ingestion.json)
+- Step 4: CSV parsing workflow working - returns 50 items ✓
+- Step 5: Added Gemini API test nodes (Limit to 1, Call Gemini API, Parse Response)
 
 ## Key Decisions
 - Using Docker Compose for n8n (consistent environment)
@@ -27,11 +28,13 @@ Step 4 complete - CSV parsing workflow created and ready for import into n8n.
 - Removed weak fraud keywords (e.g., "suspicious verification", "same selfie")
 - Added clearer distinction between legitimate document issues and fraud concerns
 - Added edge case handling for empty/vague tickets
-- Fixed n8n file access: replaced Read Binary File node with Code node (bypasses security restrictions)
-- Code node uses Node.js fs module to read CSV directly from `/files/input/tickets.csv`
+- Fixed n8n CSV parsing: Used `this.helpers.getBinaryDataBuffer()` instead of manual Buffer decoding
+- Parse CSV now returns 50 items correctly ✓
+- Created .env file with GEMINI_API_KEY placeholder
 
 ## Next Step
-Step 5: Test with ONE ticket to Gemini
-- Use {{$env.GEMINI_API_KEY}} in HTTP Request node
-- Model: gemini-2.5-flash-lite
-- API key is now in .env file (secure)
+Step 5: Test the workflow
+1. Add your real Gemini API key to .env file (get from https://aistudio.google.com/app/apikey)
+2. Restart Docker container to load environment variables: `docker-compose restart`
+3. Import updated workflow into n8n
+4. Execute and verify one ticket gets classified by Gemini

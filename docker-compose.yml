@@ -8,6 +8,7 @@ services:
       - "5678:5678"
     environment:
       - N8N_FILE_STORAGE_ENABLED=true
+      - N8N_ALLOW_ENV_ACCESS=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
       - ./:/home/node/.n8n-files
