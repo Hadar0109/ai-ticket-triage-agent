@@ -36,6 +36,8 @@ Step 5 adapted for n8n Cloud - Testing with ONE ticket to Gemini API
 - Switched from Docker to n8n Cloud (solved environment variable access issues)
 - Embedded CSV data in Code node (no file system dependencies)
 - Migrated to n8n credential system (better security than env vars)
+- Fixed URL in Call Gemini API node (removed duplicate authentication)
+- Fixed Parse Response to handle Gemini markdown formatting (strips ```json wrappers)
 
 ## Next Step
 Step 5: Test the workflow in n8n Cloud

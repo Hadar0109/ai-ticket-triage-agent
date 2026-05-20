@@ -37,8 +37,9 @@
 1. Open the imported workflow
 2. Click on the **"Call Gemini API"** node
 3. In the node settings, find the **Credentials** section
-4. Select your "Gemini API Key" credential
-5. Click **Save**
+4. Select your "Gemini API Key" credential from the dropdown
+5. **Verify the URL** is: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent` (no `?key=...` at the end)
+6. Click **Save**
 
 ## Step 5: Test the Workflow
 

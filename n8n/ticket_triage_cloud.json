@@ -41,7 +41,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={{ $credentials.geminiApiKey }}",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
         "sendBody": true,
         "contentType": "json",
         "bodyParameters": {
@@ -68,7 +68,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Extract the AI response from Gemini\nconst response = $input.item.json;\n\n// Gemini returns the response in candidates[0].content.parts[0].text\nconst aiText = response.candidates[0].content.parts[0].text;\n\n// Parse the JSON from the AI response\nlet classification;\ntry {\n  classification = JSON.parse(aiText);\n} catch (error) {\n  throw new Error('Failed to parse AI response as JSON: ' + aiText);\n}\n\n// Get the original ticket data from the previous node\nconst originalTicket = $('Limit to 1').item.json;\n\n// Combine original ticket data with classification\nconst result = {\n  ticket_id: originalTicket.ticket_id,\n  created_at: originalTicket.created_at,\n  customer_name: originalTicket.customer_name,\n  customer_email: originalTicket.customer_email,\n  subject: originalTicket.subject,\n  body: originalTicket.body,\n  status: originalTicket.status,\n  urgency: classification.urgency,\n  category: classification.category,\n  summary: classification.summary,\n  flag_for_review: classification.flag_for_review\n};\n\nreturn { json: result };"
+        "jsCode": "// Extract the AI response from Gemini\nconst response = $input.item.json;\n\n// Gemini returns the response in candidates[0].content.parts[0].text\nlet aiText = response.candidates[0].content.parts[0].text;\n\n// Remove markdown code blocks if present (Gemini often wraps JSON in ```json ... ```)\naiText = aiText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\n// Parse the JSON from the AI response\nlet classification;\ntry {\n  classification = JSON.parse(aiText);\n} catch (error) {\n  throw new Error('Failed to parse AI response as JSON: ' + aiText);\n}\n\n// Get the original ticket data from the previous node\nconst originalTicket = $('Limit to 1').item.json;\n\n// Combine original ticket data with classification\nconst result = {\n  ticket_id: originalTicket.ticket_id,\n  created_at: originalTicket.created_at,\n  customer_name: originalTicket.customer_name,\n  customer_email: originalTicket.customer_email,\n  subject: originalTicket.subject,\n  body: originalTicket.body,\n  status: originalTicket.status,\n  urgency: classification.urgency,\n  category: classification.category,\n  summary: classification.summary,\n  flag_for_review: classification.flag_for_review\n};\n\nreturn { json: result };"
       },
       "id": "f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c",
       "name": "Parse Response",
@@ -133,6 +133,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-05-20T12:52:00.000Z",
+  "updatedAt": "2026-05-20T13:27:00.000Z",
   "versionId": ""
 }
