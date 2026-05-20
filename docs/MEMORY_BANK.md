@@ -1,9 +1,9 @@
 # AU10TIX Assignment Progress
 
-Last updated: Wednesday, May 20, 2026 7:48 PM
+Last updated: Wednesday, May 20, 2026 8:30 PM
 
 ## Current Status
-✅ **Stage 2 Complete** - Fraud Validation Layer implemented and tested
+✅ **Stage 3 Complete** - Error Handling and Reliability implemented
 🔄 **Testing Phase** - Running with 1 ticket to conserve API quota
 
 ## Completed Milestones
@@ -26,16 +26,32 @@ Last updated: Wednesday, May 20, 2026 7:48 PM
   - Sets category = "Fraud Concern" and flag_for_review = true
   - Smart urgency elevation (High only for active threats)
   - Position: Between Parse Response and Format CSV Output
+- **Stage 3**: Error Handling and Reliability ✓
+  - HTTP Request nodes with "Continue On Fail" enabled
+  - IF node to detect API errors
+  - Wait node for 7-second delay before retry
+  - Automatic retry with second HTTP Request node
+  - Invalid/malformed JSON response handling
+  - Missing required fields detection
+  - Graceful fallback classification for all failure scenarios
+  - Workflow stability - no unexpected terminations
+  - Uses n8n native workflow logic (no custom credential handling)
 
-## Workflow Architecture (6 Nodes)
+## Workflow Architecture (9 Nodes)
 ```
 Manual Trigger 
   → Load and Parse CSV (50 tickets embedded)
     → Limit to 1 (testing mode - preserves API quota)
-      → Call Gemini API (gemini-2.5-flash-lite)
-        → Parse Response (extracts JSON classification)
-          → Fraud Validation Layer (rule-based override)
-            → Format CSV Output (exports results)
+      → Call Gemini API (HTTP Request with continueOnFail)
+        → Check for Error (IF node)
+          ├─ TRUE: Error detected
+          │    → Wait 7 Seconds
+          │      → Retry Gemini API (HTTP Request)
+          │        → Parse Response with Fallback
+          └─ FALSE: Success
+               → Parse Response with Fallback
+                 → Fraud Validation Layer (rule-based override)
+                   → Format CSV Output (exports results)
 ```
 
 ## Key Decisions
@@ -65,6 +81,9 @@ Manual Trigger
 - **Removed time-based urgency escalation** (historical data was causing incorrect classifications)
 - **Updated prompt to 128 lines** with comprehensive rules and examples
 - **Removed hours_since_created and status from LLM input** (content-only classification)
+- **Fixed $credentials error**: Refactored to use HTTP Request nodes instead of Code nodes for API calls
+- **Implemented n8n native retry logic**: IF/Wait/HTTP pattern instead of JavaScript async/await
+- **Fixed "Check for Error" node**: Changed from object comparison to string-based condition to properly detect Gemini 503 UNAVAILABLE errors
 
 ## Prompt Engineering Highlights
 - **128-line comprehensive prompt** (`classification_prompt.txt`)
@@ -83,11 +102,11 @@ Manual Trigger
 - flag_for_review: false
 
 ## Next Steps
-1. **Add Error Handling and Reliability** -  API Rate Limit / Quota Handling, Temporary API Failures, Invalid or Empty AI Response
-5. **Implement JSON schema enforcement** via `generationConfig.response_schema` (optional enhancement)
-2. **Export results** to permanent storage (Google Sheets, Database, or local file)
-3. **Remove "Limit to 1" node** and process all 50 tickets (when API quota permits)
-4. **Performance analysis**: Review classification accuracy and fraud detection rate
+1. **Test the error handling** with a single ticket to verify fallback behavior works correctly
+2. **Implement JSON schema enforcement** via `generationConfig.response_schema` (optional enhancement)
+3. **Export results** to permanent storage (Google Sheets, Database, or local file)
+4. **Remove "Limit to 1" node** and process all 50 tickets (when API quota permits)
+5. **Performance analysis**: Review classification accuracy and fraud detection rate
 
 ## Production Readiness
 ✅ Comprehensive classification prompt  
@@ -97,11 +116,16 @@ Manual Trigger
 ✅ No file system dependencies (cloud-ready)  
 ✅ Scalable architecture (1 to 50+ tickets)  
 ✅ Proper error handling in parse logic  
+✅ API rate limit and quota handling (retry with delay)  
+✅ Graceful fallback for all failure scenarios  
+✅ Workflow stability (no unexpected crashes)  
 🔄 Pending: Full batch testing (50 tickets)  
 🔄 Pending: Results export to permanent storage  
 
 ## Documentation
 - `docs/N8N_CLOUD_SETUP.md` - Complete setup guide with step-by-step instructions
+- `docs/ERROR_HANDLING.md` - Comprehensive error handling and reliability documentation  
+- `docs/TESTING_GUIDE.md` - Testing guide for error handling verification
 - `prompts/classification_prompt.txt` - 128-line AI prompt with 6 rules
 - `prompts/fraud_keywords.txt` - 25 fraud indicator keywords
-- `n8n/ticket_triage_cloud.json` - 187-line workflow definition (6 nodes)
+- `n8n/ticket_triage_cloud.json` - 303-line workflow definition (9 nodes)

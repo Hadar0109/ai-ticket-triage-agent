@@ -44,12 +44,13 @@
         "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
         "sendBody": true,
         "contentType": "json",
-        "bodyParameters": {
-          "parameters": []
-        },
         "specifyBody": "json",
         "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"# Role and Identity\\n\\nYou are an expert support ticket triage analyst for AU10TIX, an identity verification company. Your task is to analyze customer support tickets and extract structured triage metadata accurately and consistently.\\n\\n# Output Format Specification\\n\\nReturn ONLY a valid JSON object. Do not include:\\n- Markdown code blocks or backticks (such as ```json or ```)\\n- Preambles, explanations, or conversational text (like \\\"Here is your JSON:\\\")\\n- Extra fields beyond the four required keys\\n- Line breaks or formatting within string values\\n\\nYour response must be pure JSON with exactly these four keys:\\n\\n{\\n  \\\"urgency\\\": \\\"High\\\" | \\\"Medium\\\" | \\\"Low\\\",\\n  \\\"category\\\": \\\"Document Issue\\\" | \\\"Account Access\\\" | \\\"Billing\\\" | \\\"Fraud Concern\\\" | \\\"General Inquiry\\\",\\n  \\\"summary\\\": \\\"A single-sentence description following the guidelines in Rule 5\\\",\\n  \\\"flag_for_review\\\": true | false\\n}\\n\\n# Classification Rules\\n\\n## Rule 1: General Principles\\n\\n- Base classification ONLY on information explicitly provided in the ticket\\n- Do not invent missing details or make unsupported assumptions\\n- Focus on describing the customer's actual issue, not the classification labels\\n- When a ticket contains multiple overlapping issues, use the priority hierarchy in Rule 2\\n\\n## Rule 2: Classification Hierarchy (Multi-Issue Tickets)\\n\\nIf a ticket mentions multiple issues, determine the category using this strict priority order:\\n\\n1. **Fraud Concern** - Always takes absolute precedence over all other categories\\n2. **Account Access** - If the customer is completely locked out or blocked from access\\n3. **Document Issue** - If active verification or document upload is blocked\\n4. **Billing** - If there is financial impact, payment issues, or subscription concerns\\n5. **General Inquiry** - Informational questions, feature requests, or routine updates\\n\\n**Example:** If a ticket mentions both a billing question AND suspected fraud → classify as \\\"Fraud Concern\\\"\\n\\n## Rule 3: Urgency Classification\\n\\n**Critical:** Urgency should be determined ONLY by the ticket content and business/security impact. Do not increase urgency based on ticket age, creation date, or status duration.\\n\\nAnalyze the ticket content and assign urgency:\\n\\n- **High**: Customer completely blocked from onboarding or verification, clear fraud or security concern, unauthorized access, data breach, critical business impact, or severe billing dispute\\n- **Medium**: Verification problems, upload/OCR failures, login or 2FA issues, billing discrepancies, delayed verification, or workflow issues with partial functionality\\n- **Low**: General questions, feature requests, routine follow-ups, documentation/integration questions, password resets with no urgency, or unclear non-urgent issues\\n\\n## Rule 4: Category Definitions\\n\\nSelect exactly ONE category from these five options:\\n\\n- **Document Issue**: Verification failures, upload errors, OCR issues, rejected documents, blurry/cropped images, document quality problems, unsupported document types, or format issues\\n- **Account Access**: Login problems, locked accounts, password resets, forgotten credentials, permissions issues, 2FA failures, session timeouts, or account deactivation\\n- **Billing**: Payments, invoices, refunds, subscriptions, pricing questions, billing disputes, duplicate charges, or payment method updates\\n- **Fraud Concern**: Forged/fake/altered documents, stolen identity, impersonation, unauthorized account creation or access, suspicious identity mismatch, document tampering, metadata manipulation, or repeated suspicious verification attempts\\n- **General Inquiry**: Product questions, integrations, API documentation, feature requests, partnership inquiries, competitor comparisons, or general support questions\\n\\n## Rule 5: Summary Guidelines\\n\\nCreate a single-sentence description in plain English that:\\n\\n- Describes the customer's issue from their perspective\\n- Focuses on operational impact, not classification labels\\n- Avoids technical jargon, error codes, or internal terminology\\n- States what is wrong or what the customer needs, not what category it belongs to\\n\\n**Good examples:**\\n- \\\"Customer's passport upload fails repeatedly despite valid expiration date\\\"\\n- \\\"Customer received verification email for account they did not create\\\"\\n- \\\"Customer is locked out after multiple failed 2FA attempts\\\"\\n- \\\"Customer requests information about Python SDK availability\\\"\\n\\n**Bad examples (avoid these patterns):**\\n- \\\"This is a Medium urgency Document Issue\\\" (uses classification labels)\\n- \\\"Customer has a problem with their document\\\" (too vague, no specifics)\\n- \\\"DOC_REJECT_44 error occurred\\\" (too technical, uses internal error codes)\\n- \\\"Fraud concern ticket\\\" (category name instead of describing the issue)\\n\\n## Rule 6: Fraud Detection (flag_for_review)\\n\\n### Set flag_for_review = true ONLY for credible fraud or security threats:\\n\\n- Forged, fake, or altered documents\\n- Stolen identity or identity theft\\n- Impersonation attempts\\n- Unauthorized account creation or access\\n- Suspicious identity mismatch (e.g., different person in selfie vs ID)\\n- Document tampering or metadata manipulation\\n- Repeated suspicious verification attempts across multiple accounts\\n- Clear evidence of fraudulent activity\\n\\n### Set flag_for_review = false for:\\n\\n- Routine verification failures without fraud indicators\\n- OCR mistakes or misreads\\n- Upload bugs or technical errors\\n- Blurry, cropped, or low-quality document images\\n- Customer confusion or legitimate mistakes\\n- Normal login or password reset issues\\n- Name spelling variations or typos\\n- Document expiration concerns without forgery indicators\\n\\n**Critical Constraint:** If fraud or a security threat is not clearly and explicitly indicated or heavily implied in the ticket, default this field to false.\\n\\n# Edge Cases & Error Handling\\n\\nIf the ticket body is entirely empty, unreadable, or lacks sufficient information to perform classification, gracefully bypass normal classification logic and return exactly this JSON structure:\\n\\n{\\n  \\\"urgency\\\": \\\"Low\\\",\\n  \\\"category\\\": \\\"General Inquiry\\\",\\n  \\\"summary\\\": \\\"Ticket contains no readable content or lacks sufficient information\\\",\\n  \\\"flag_for_review\\\": false\\n}\\n\\n# Input Ticket Data\\n\\nSubject: {{ $json.subject }}\\nBody: {{ $json.body }}\\nCustomer: {{ $json.customer_name }} ({{ $json.customer_email }})\\n\\nAnalyze the ticket above and return your classification as valid JSON only.\"\n        }\n      ],\n      \"role\": \"user\"\n    }\n  ]\n}",
-        "options": {}
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "ignoreHttpStatusErrors": true,
+          "timeout": 30000
+        }
       },
       "id": "e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b",
       "name": "Call Gemini API",
@@ -64,18 +65,94 @@
           "id": "PLACEHOLDER_CREDENTIAL_ID",
           "name": "Gemini API Key"
         }
-      }
+      },
+      "continueOnFail": true
     },
     {
       "parameters": {
-        "jsCode": "// Extract the AI response from Gemini\nconst response = $input.item.json;\n\n// Gemini returns the response in candidates[0].content.parts[0].text\nlet aiText = response.candidates[0].content.parts[0].text;\n\n// Remove markdown code blocks if present (Gemini often wraps JSON in ```json ... ```)\naiText = aiText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\n// Parse the JSON from the AI response\nlet classification;\ntry {\n  classification = JSON.parse(aiText);\n} catch (error) {\n  throw new Error('Failed to parse AI response as JSON: ' + aiText);\n}\n\n// Get the original ticket data from the Limit to 1 node\nconst originalTicket = $('Limit to 1').item.json;\n\n// Combine original ticket data with classification\nconst result = {\n  ticket_id: originalTicket.ticket_id,\n  created_at: originalTicket.created_at,\n  customer_name: originalTicket.customer_name,\n  customer_email: originalTicket.customer_email,\n  subject: originalTicket.subject,\n  body: originalTicket.body,\n  status: originalTicket.status,\n  urgency: classification.urgency,\n  category: classification.category,\n  summary: classification.summary,\n  flag_for_review: classification.flag_for_review\n};\n\nreturn { json: result };"
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ String($json.error?.message || $json.error || \"\") }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
-      "id": "f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c",
-      "name": "Parse Response",
-      "type": "n8n-nodes-base.code",
+      "id": "a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      "name": "Check for Error",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
         1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 7,
+        "unit": "seconds"
+      },
+      "id": "b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
+      "name": "Wait 7 Seconds",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1340,
+        200
+      ],
+      "webhookId": "wait-webhook-id"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"# Role and Identity\\n\\nYou are an expert support ticket triage analyst for AU10TIX, an identity verification company. Your task is to analyze customer support tickets and extract structured triage metadata accurately and consistently.\\n\\n# Output Format Specification\\n\\nReturn ONLY a valid JSON object. Do not include:\\n- Markdown code blocks or backticks (such as ```json or ```)\\n- Preambles, explanations, or conversational text (like \\\"Here is your JSON:\\\")\\n- Extra fields beyond the four required keys\\n- Line breaks or formatting within string values\\n\\nYour response must be pure JSON with exactly these four keys:\\n\\n{\\n  \\\"urgency\\\": \\\"High\\\" | \\\"Medium\\\" | \\\"Low\\\",\\n  \\\"category\\\": \\\"Document Issue\\\" | \\\"Account Access\\\" | \\\"Billing\\\" | \\\"Fraud Concern\\\" | \\\"General Inquiry\\\",\\n  \\\"summary\\\": \\\"A single-sentence description following the guidelines in Rule 5\\\",\\n  \\\"flag_for_review\\\": true | false\\n}\\n\\n# Classification Rules\\n\\n## Rule 1: General Principles\\n\\n- Base classification ONLY on information explicitly provided in the ticket\\n- Do not invent missing details or make unsupported assumptions\\n- Focus on describing the customer's actual issue, not the classification labels\\n- When a ticket contains multiple overlapping issues, use the priority hierarchy in Rule 2\\n\\n## Rule 2: Classification Hierarchy (Multi-Issue Tickets)\\n\\nIf a ticket mentions multiple issues, determine the category using this strict priority order:\\n\\n1. **Fraud Concern** - Always takes absolute precedence over all other categories\\n2. **Account Access** - If the customer is completely locked out or blocked from access\\n3. **Document Issue** - If active verification or document upload is blocked\\n4. **Billing** - If there is financial impact, payment issues, or subscription concerns\\n5. **General Inquiry** - Informational questions, feature requests, or routine updates\\n\\n**Example:** If a ticket mentions both a billing question AND suspected fraud → classify as \\\"Fraud Concern\\\"\\n\\n## Rule 3: Urgency Classification\\n\\n**Critical:** Urgency should be determined ONLY by the ticket content and business/security impact. Do not increase urgency based on ticket age, creation date, or status duration.\\n\\nAnalyze the ticket content and assign urgency:\\n\\n- **High**: Customer completely blocked from onboarding or verification, clear fraud or security concern, unauthorized access, data breach, critical business impact, or severe billing dispute\\n- **Medium**: Verification problems, upload/OCR failures, login or 2FA issues, billing discrepancies, delayed verification, or workflow issues with partial functionality\\n- **Low**: General questions, feature requests, routine follow-ups, documentation/integration questions, password resets with no urgency, or unclear non-urgent issues\\n\\n## Rule 4: Category Definitions\\n\\nSelect exactly ONE category from these five options:\\n\\n- **Document Issue**: Verification failures, upload errors, OCR issues, rejected documents, blurry/cropped images, document quality problems, unsupported document types, or format issues\\n- **Account Access**: Login problems, locked accounts, password resets, forgotten credentials, permissions issues, 2FA failures, session timeouts, or account deactivation\\n- **Billing**: Payments, invoices, refunds, subscriptions, pricing questions, billing disputes, duplicate charges, or payment method updates\\n- **Fraud Concern**: Forged/fake/altered documents, stolen identity, impersonation, unauthorized account creation or access, suspicious identity mismatch, document tampering, metadata manipulation, or repeated suspicious verification attempts\\n- **General Inquiry**: Product questions, integrations, API documentation, feature requests, partnership inquiries, competitor comparisons, or general support questions\\n\\n## Rule 5: Summary Guidelines\\n\\nCreate a single-sentence description in plain English that:\\n\\n- Describes the customer's issue from their perspective\\n- Focuses on operational impact, not classification labels\\n- Avoids technical jargon, error codes, or internal terminology\\n- States what is wrong or what the customer needs, not what category it belongs to\\n\\n**Good examples:**\\n- \\\"Customer's passport upload fails repeatedly despite valid expiration date\\\"\\n- \\\"Customer received verification email for account they did not create\\\"\\n- \\\"Customer is locked out after multiple failed 2FA attempts\\\"\\n- \\\"Customer requests information about Python SDK availability\\\"\\n\\n**Bad examples (avoid these patterns):**\\n- \\\"This is a Medium urgency Document Issue\\\" (uses classification labels)\\n- \\\"Customer has a problem with their document\\\" (too vague, no specifics)\\n- \\\"DOC_REJECT_44 error occurred\\\" (too technical, uses internal error codes)\\n- \\\"Fraud concern ticket\\\" (category name instead of describing the issue)\\n\\n## Rule 6: Fraud Detection (flag_for_review)\\n\\n### Set flag_for_review = true ONLY for credible fraud or security threats:\\n\\n- Forged, fake, or altered documents\\n- Stolen identity or identity theft\\n- Impersonation attempts\\n- Unauthorized account creation or access\\n- Suspicious identity mismatch (e.g., different person in selfie vs ID)\\n- Document tampering or metadata manipulation\\n- Repeated suspicious verification attempts across multiple accounts\\n- Clear evidence of fraudulent activity\\n\\n### Set flag_for_review = false for:\\n\\n- Routine verification failures without fraud indicators\\n- OCR mistakes or misreads\\n- Upload bugs or technical errors\\n- Blurry, cropped, or low-quality document images\\n- Customer confusion or legitimate mistakes\\n- Normal login or password reset issues\\n- Name spelling variations or typos\\n- Document expiration concerns without forgery indicators\\n\\n**Critical Constraint:** If fraud or a security threat is not clearly and explicitly indicated or heavily implied in the ticket, default this field to false.\\n\\n# Edge Cases & Error Handling\\n\\nIf the ticket body is entirely empty, unreadable, or lacks sufficient information to perform classification, gracefully bypass normal classification logic and return exactly this JSON structure:\\n\\n{\\n  \\\"urgency\\\": \\\"Low\\\",\\n  \\\"category\\\": \\\"General Inquiry\\\",\\n  \\\"summary\\\": \\\"Ticket contains no readable content or lacks sufficient information\\\",\\n  \\\"flag_for_review\\\": false\\n}\\n\\n# Input Ticket Data\\n\\nSubject: {{ $('Limit to 1').item.json.subject }}\\nBody: {{ $('Limit to 1').item.json.body }}\\nCustomer: {{ $('Limit to 1').item.json.customer_name }} ({{ $('Limit to 1').item.json.customer_email }})\\n\\nAnalyze the ticket above and return your classification as valid JSON only.\"\n        }\n      ],\n      \"role\": \"user\"\n    }\n  ]\n}",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "timeout": 30000
+        }
+      },
+      "id": "c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+      "name": "Retry Gemini API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        200
+      ],
+      "credentials": {
+        "geminiApiKey": {
+          "id": "PLACEHOLDER_CREDENTIAL_ID",
+          "name": "Gemini API Key"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get API response from either first call or retry\nconst apiResponse = $input.item.json;\n\n// Get the original ticket data from Limit to 1 node\nconst originalTicket = $('Limit to 1').item.json;\n\n// Define fallback classification for any error scenario\nconst fallbackClassification = {\n  urgency: \"Low\",\n  category: \"General Inquiry\",\n  summary: \"Ticket could not be classified automatically due to an invalid AI response.\",\n  flag_for_review: true\n};\n\nlet classification = null;\n\n// Check if response has an error field (HTTP Request node sets this when continueOnFail is true)\nif (apiResponse.error) {\n  classification = fallbackClassification;\n} else {\n  // Try to extract and parse the AI response\n  try {\n    // Check if response structure is valid\n    if (!apiResponse || !apiResponse.candidates || !apiResponse.candidates[0]) {\n      classification = fallbackClassification;\n    } else {\n      // Extract text from response\n      let aiText = apiResponse.candidates[0].content?.parts?.[0]?.text;\n      \n      // Check if text is empty or undefined\n      if (!aiText || aiText.trim() === '') {\n        classification = fallbackClassification;\n      } else {\n        // Remove markdown code blocks if present\n        aiText = aiText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n        \n        // Try to parse JSON\n        try {\n          const parsed = JSON.parse(aiText);\n          \n          // Validate required fields\n          if (!parsed.urgency || !parsed.category || !parsed.summary || \n              parsed.flag_for_review === undefined || parsed.flag_for_review === null) {\n            // Missing required fields\n            classification = fallbackClassification;\n          } else {\n            // Valid classification\n            classification = {\n              urgency: parsed.urgency,\n              category: parsed.category,\n              summary: parsed.summary,\n              flag_for_review: parsed.flag_for_review\n            };\n          }\n        } catch (parseError) {\n          // JSON parsing failed\n          classification = fallbackClassification;\n        }\n      }\n    }\n  } catch (error) {\n    // Any unexpected error\n    classification = fallbackClassification;\n  }\n}\n\n// Combine original ticket data with classification\nconst result = {\n  ticket_id: originalTicket.ticket_id,\n  created_at: originalTicket.created_at,\n  customer_name: originalTicket.customer_name,\n  customer_email: originalTicket.customer_email,\n  subject: originalTicket.subject,\n  body: originalTicket.body,\n  status: originalTicket.status,\n  urgency: classification.urgency,\n  category: classification.category,\n  summary: classification.summary,\n  flag_for_review: classification.flag_for_review\n};\n\nreturn { json: result };"
+      },
+      "id": "f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c",
+      "name": "Parse Response with Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
         300
       ]
     },
@@ -88,7 +165,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1340,
+        2000,
         300
       ]
     },
@@ -101,7 +178,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1560,
+        2220,
         300
       ]
     }
@@ -144,14 +221,54 @@
       "main": [
         [
           {
-            "node": "Parse Response",
+            "node": "Check for Error",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parse Response": {
+    "Check for Error": {
+      "main": [
+        [
+          {
+            "node": "Wait 7 Seconds",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Response with Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 7 Seconds": {
+      "main": [
+        [
+          {
+            "node": "Retry Gemini API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Gemini API": {
+      "main": [
+        [
+          {
+            "node": "Parse Response with Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response with Fallback": {
       "main": [
         [
           {
@@ -181,6 +298,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-05-20T16:34:00.000Z",
+  "updatedAt": "2026-05-20T17:15:00.000Z",
   "versionId": ""
 }
