@@ -40,27 +40,15 @@ If a ticket mentions multiple issues, determine the category using this strict p
 
 **Example:** If a ticket mentions both a billing question AND suspected fraud → classify as "Fraud Concern"
 
-## Rule 3: Urgency Classification with Time-Escalation
+## Rule 3: Urgency Classification
 
-### Step 1: Determine Base Urgency
+**Critical:** Urgency should be determined ONLY by the ticket content and business/security impact. Do not increase urgency based on ticket age, creation date, or status duration.
 
-Analyze the ticket content and assign base urgency:
+Analyze the ticket content and assign urgency:
 
 - **High**: Customer completely blocked from onboarding or verification, clear fraud or security concern, unauthorized access, data breach, critical business impact, or severe billing dispute
 - **Medium**: Verification problems, upload/OCR failures, login or 2FA issues, billing discrepancies, delayed verification, or workflow issues with partial functionality
 - **Low**: General questions, feature requests, routine follow-ups, documentation/integration questions, password resets with no urgency, or unclear non-urgent issues
-
-### Step 2: Apply Time-Escalation Rule
-
-After determining base urgency, escalate by ONE level if ticket age exceeds operational thresholds:
-
-- status = "new" AND hours_since_created > 12 → escalate
-- status = "open" AND hours_since_created > 24 → escalate  
-- status = "pending" AND hours_since_created > 48 → escalate
-
-**Escalation path:** Low → Medium → High (High remains High regardless of age)
-
-**Note:** The hours_since_created value is pre-calculated by the system; use it directly without further computation.
 
 ## Rule 4: Category Definitions
 
@@ -134,8 +122,6 @@ If the ticket body is entirely empty, unreadable, or lacks sufficient informatio
 
 Subject: {{ $json.subject }}
 Body: {{ $json.body }}
-Status: {{ $json.status }}
-Hours Since Created: {{ $json.hours_since_created }}
 Customer: {{ $json.customer_name }} ({{ $json.customer_email }})
 
 Analyze the ticket above and return your classification as valid JSON only.
