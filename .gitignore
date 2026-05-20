@@ -1,0 +1,21 @@
+# Environment variables (contains API keys)
+# NOTE: For submission, .env will be included so evaluator can run immediately
+# For public repos, uncomment this line:
+# .env
+
+# n8n sensitive data (exclude credentials but keep workflows)
+.n8n/credentials/
+.n8n/.secret
+.n8n/.n8n.lock
+
+# Output files (generated during testing)
+output/*.csv
+!output/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/

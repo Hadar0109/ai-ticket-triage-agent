@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_FILE_STORAGE_ENABLED=true
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./.n8n:/home/node/.n8n              # Persistent n8n data (workflows, settings)
+      - ./:/home/node/.n8n-files            # Project files (CSV, prompts)
+    restart: unless-stopped

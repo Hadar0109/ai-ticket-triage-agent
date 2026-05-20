@@ -1,0 +1,76 @@
+{
+  "name": "Ticket Triage - CSV Ingestion",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b1a5c2e3-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": "/home/node/.n8n-files/input/tickets.csv",
+        "options": {}
+      },
+      "id": "a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      "name": "Read CSV File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get CSV content from binary data\nconst binaryData = $input.first().binary.data;\nconst csvContent = Buffer.from(binaryData.data, binaryData.encoding || 'base64').toString('utf8');\n\n// Simple CSV parser that handles quoted fields\nfunction parseCSVLine(line) {\n  const result = [];\n  let current = '';\n  let inQuotes = false;\n  \n  for (let i = 0; i < line.length; i++) {\n    const char = line[i];\n    \n    if (char === '\"') {\n      inQuotes = !inQuotes;\n    } else if (char === ',' && !inQuotes) {\n      result.push(current.trim());\n      current = '';\n    } else {\n      current += char;\n    }\n  }\n  result.push(current.trim());\n  return result;\n}\n\n// Parse CSV\nconst lines = csvContent.trim().split('\\n');\nconst headers = parseCSVLine(lines[0]);\n\nconst tickets = [];\nfor (let i = 1; i < lines.length; i++) {\n  const values = parseCSVLine(lines[i]);\n  const ticket = {};\n  headers.forEach((header, index) => {\n    ticket[header] = values[index] || '';\n  });\n  tickets.push(ticket);\n}\n\nreturn tickets.map(ticket => ({ json: ticket }));"
+      },
+      "id": "c2b3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
+      "name": "Parse CSV",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read CSV File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read CSV File": {
+      "main": [
+        [
+          {
+            "node": "Parse CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-05-19T15:42:00.000Z",
+  "versionId": ""
+}
