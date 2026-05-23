@@ -1,0 +1,51 @@
+ticket_id,created_at,customer_name,customer_email,subject,body,status
+TKT-1031,28/04/2026 02:44,Greta Lindberg,glindberg@nordicfintech.example,General inquiry,,pending
+TKT-1041,27/04/2026 22:22,Yuki Nakamura,ynakamura@tokyobank.example,Identity verification issue,got a notification my ID was used to open an account. this wasn't me. someone else is using my documents,new
+TKT-1026,27/04/2026 07:17,Diego Rivera,d.rivera@orbitfinance.example,Account question,"Logged in but the dashboard is empty, no transactions visible. Was my account deactivated?",new
+TKT-1015,27/04/2026 02:28,Ricardo Silva,rsilva@brazilfintech.example,Billing inquiry,We want to cancel our subscription at end of cycle. What's the process?,new
+TKT-1017,26/04/2026 20:52,Kenji Tanaka,k.tanaka@asiapacific.example,Document upload problem,"I uploaded my passport three times and it keeps getting rejected. The photo is clear, the document is valid until 2029. What's happening?",new
+TKT-1045,26/04/2026 19:13,Yuki Nakamura,ynakamura@tokyobank.example,Document upload problem,I am trying to verify with my national ID card but the back side keeps failing. The front works fine. Lighting issue maybe?,open
+TKT-1004,26/04/2026 19:01,Jamal Washington,jwashington@coastalbank.example,Document upload problem,"Hi, can you tell me what file formats are accepted for the ID upload? I have a HEIC file from my iPhone and your form keeps saying 'invalid format'.",new
+TKT-1010,26/04/2026 18:01,Kenji Tanaka,k.tanaka@asiapacific.example,Document upload problem,My residence permit was approved but the system rejected it as 'unknown document type'. It's a valid government-issued ID.,open
+TKT-1044,26/04/2026 10:14,Diego Rivera,d.rivera@orbitfinance.example,Identity verification issue,"Hey team, my passport photo has been used without my permission. I never created an account on your system. How do I get this removed?",pending
+TKT-1006,26/04/2026 01:51,Elena Petrova,elena.p@nordicfintech.example,General inquiry,Is it possible to integrate with HubSpot? We use it for our CRM.,open
+TKT-1033,25/04/2026 20:05,Ricardo Silva,rsilva@brazilfintech.example,Account question,Can I get a session timeout extension? My team is in the middle of a verification batch and we keep getting kicked out.,new
+TKT-1001,25/04/2026 12:50,Greta Lindberg,glindberg@nordicfintech.example,Cannot access account,I forgot my password and the reset link in the email is broken. Can you send me a new one?,open
+TKT-1046,25/04/2026 10:53,Tomas Novak,tnovak@apexcapital.example,Document upload problem,Document upload step is stuck on processing for 20 minutes. Should I refresh?,pending
+TKT-1020,25/04/2026 02:59,Carlos Mendez,cmendez@iberianfin.example,Suspicious activity on account,,new
+TKT-1038,24/04/2026 21:32,Jamal Washington,jwashington@coastalbank.example,Suspicious activity on account,The selfie verification step is showing a face that is not me. I uploaded my passport but the system says identity mismatch. I am worried someone is trying to impersonate me.,new
+TKT-1034,24/04/2026 18:38,Naledi Mokoena,nmokoena@savbank.example,General inquiry,Where can I find your SOC 2 report?,open
+TKT-1027,24/04/2026 17:38,Tomas Novak,tnovak@apexcapital.example,Cannot access account,Two factor auth code is not arriving. I've waited 10 minutes. Please help.,pending
+TKT-1008,24/04/2026 16:11,Aisha Khan,akhan@gulfbanking.example,Identity verification issue,There's something off with the verification on my account. The system accepted an ID that I don't think was mine. The DOB shown is 1987 but mine is 1991.,new
+TKT-1012,24/04/2026 15:46,Elena Petrova,elena.p@nordicfintech.example,Verification failed,Submitted a temporary driving permit instead of full license by mistake. Can I redo the verification?,open
+TKT-1009,23/04/2026 14:35,Aisha Khan,akhan@gulfbanking.example,Cannot access account,My account says 'pending verification' for 3 days now. Is this normal?,pending
+TKT-1049,23/04/2026 13:20,Naledi Mokoena,nmokoena@savbank.example,Identity verification issue,URGENT: a customer just submitted what appears to be a doctored utility bill. The metadata shows it was edited 4 hours before upload. Please check ticket #47 from this morning.,open
+TKT-1014,23/04/2026 09:04,Greta Lindberg,glindberg@nordicfintech.example,Suspicious activity on account,Found my driver's license number being used on what looks like a forged document. The customer who submitted has a different photo than mine. Please escalate.,pending
+TKT-1043,22/04/2026 21:28,Priya Shankar,priya.s@meridiancorp.example,Identity verification issue,We are seeing patterns where the same selfie appears across multiple new account submissions with different names. Requesting an urgent review of accounts created on Apr 28-29.,open
+TKT-1021,22/04/2026 18:19,Tomas Novak,tnovak@apexcapital.example,General inquiry,"Quick question, do you have an SDK for Python? I see the REST API docs but couldn't find a Python library.",pending
+TKT-1035,22/04/2026 09:10,Alex Morgan,alex.morgan@northstarbank.example,Document upload problem,The OCR seems to be reading my surname wrong. It says 'Khsn' instead of 'Khan'. How do I fix this?,open
+TKT-1013,22/04/2026 05:35,Lukas Schmidt,lschmidt@alpinefinance.example,Document upload problem,My driver's license was issued last week and the system says it can't read the date. Can I submit it manually?,pending
+TKT-1005,21/04/2026 18:58,Elena Petrova,elena.p@nordicfintech.example,Suspicious activity on account,I'm an admin at our company and I see one of our team members verified with a passport that doesn't match the ID we have on file from HR. Could be a substitution attempt.,new
+TKT-1042,21/04/2026 09:04,Aisha Khan,akhan@gulfbanking.example,Account question,How do I export my verification history? I need it for an audit.,new
+TKT-1050,21/04/2026 06:46,Jamal Washington,jwashington@coastalbank.example,Billing inquiry,"Can we get a quote for 50,000 verifications per month?",open
+TKT-1018,21/04/2026 05:09,David Cohen,dcohen@levantbank.example,Verification failed,My middle name appears on the passport but not in my account. The system flagged a mismatch.,new
+TKT-1016,21/04/2026 04:44,Priya Shankar,priya.s@meridiancorp.example,Billing inquiry,How do I update the billing email? It still goes to my predecessor at the company.,open
+TKT-1003,20/04/2026 03:30,Rashida Patel,rpatel@subcontinentbank.example,Verification failed,"Hi, the document upload keeps failing with error code DOC_REJECT_44. Could you tell me what that means?",open
+TKT-1024,20/04/2026 03:19,Lukas Schmidt,lschmidt@alpinefinance.example,General inquiry,Can you share your latency stats for the document verification step?,new
+TKT-1029,19/04/2026 16:36,Lukas Schmidt,lschmidt@alpinefinance.example,Verification failed,OCR misread my address. It says I live on '12 Main St' but I gave it '12 Maine St'. Will this cause issues with onboarding?,open
+TKT-1019,19/04/2026 08:56,Yuki Nakamura,ynakamura@tokyobank.example,Billing inquiry,I was charged twice this month. Can you refund the duplicate?,pending
+TKT-1023,18/04/2026 15:02,David Cohen,dcohen@levantbank.example,Account question,Account was deactivated after 90 days of inactivity. Need to reactivate.,open
+TKT-1007,18/04/2026 01:23,Kenji Tanaka,k.tanaka@asiapacific.example,Cannot access account,I'm locked out of my account after too many tries. How long is the cooldown?,pending
+TKT-1036,16/04/2026 19:45,Sarah Goldberg,sarah.g@summitinvest.example,General inquiry,Our compliance team needs the data residency policy for EU customers. Where can I find that?,new
+TKT-1037,16/04/2026 19:45,Olivia Brennan,obrennan@meridiancorp.example,General inquiry,How does your service compare to Onfido? Just doing some research.,open
+TKT-1025,16/04/2026 18:44,Tomas Novak,tnovak@apexcapital.example,Billing inquiry,The payment method on file expired. How do I update it?,open
+TKT-1048,16/04/2026 08:50,Kenji Tanaka,k.tanaka@asiapacific.example,Suspicious activity on account,"Hi, I need to flag suspicious activity. There are 4 new accounts created from my email domain in the past 2 days that we did not authorize. Please investigate.",open
+TKT-1030,16/04/2026 08:02,Carlos Mendez,cmendez@iberianfin.example,Billing inquiry,Got an invoice but no breakdown by verification type. We need that for accounting.,new
+TKT-1011,16/04/2026 05:18,Sarah Goldberg,sarah.g@summitinvest.example,Account question,Need to add a new admin to our company account. What's the process?,pending
+TKT-1032,16/04/2026 03:45,Mei Chen,mei.chen@pacificholdings.example,Billing inquiry,What's included in the Pro plan? Can't find a clear breakdown on the website.,new
+TKT-1022,16/04/2026 02:39,Greta Lindberg,glindberg@nordicfintech.example,Verification failed,The system says my passport is expired but it expires in 2027. I checked twice.,new
+TKT-1039,16/04/2026 02:26,Sarah Goldberg,sarah.g@summitinvest.example,Cannot access account,"Hi, can you help me change the email on my account? I no longer have access to the old one.",open
+TKT-1047,15/04/2026 20:45,Yuki Nakamura,ynakamura@tokyobank.example,Document upload problem,"When I try to take the selfie, the camera does not turn on in your app. I'm using Chrome on a Mac.",new
+TKT-1002,15/04/2026 19:31,Diego Rivera,d.rivera@orbitfinance.example,Verification failed,PDF of my ID got rejected. Should I send a JPG instead?,new
+TKT-1028,14/04/2026 19:17,Naledi Mokoena,nmokoena@savbank.example,Verification failed,"Tried verifying with my ID three times today, gets stuck after I take the selfie. No error message just spinning.",new
+TKT-1040,14/04/2026 17:54,Alex Morgan,alex.morgan@northstarbank.example,Billing inquiry,Invoice #1023 doesn't match the verifications we ran in March. Could you check?,new

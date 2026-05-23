@@ -1,9 +1,9 @@
 # AU10TIX Assignment Progress
 
-Last updated: Wednesday, May 20, 2026 8:30 PM
+Last updated: Wednesday, May 20, 2026 10:05 PM
 
 ## Current Status
-✅ **Stage 3 Complete** - Error Handling and Reliability implemented
+✅ **Stage 4 Complete** - CSV File Export implemented
 🔄 **Testing Phase** - Running with 1 ticket to conserve API quota
 
 ## Completed Milestones
@@ -28,7 +28,7 @@ Last updated: Wednesday, May 20, 2026 8:30 PM
   - Position: Between Parse Response and Format CSV Output
 - **Stage 3**: Error Handling and Reliability ✓
   - HTTP Request nodes with "Continue On Fail" enabled
-  - IF node to detect API errors
+  - IF node to detect API errors (string-based condition)
   - Wait node for 7-second delay before retry
   - Automatic retry with second HTTP Request node
   - Invalid/malformed JSON response handling
@@ -36,22 +36,35 @@ Last updated: Wednesday, May 20, 2026 8:30 PM
   - Graceful fallback classification for all failure scenarios
   - Workflow stability - no unexpected terminations
   - Uses n8n native workflow logic (no custom credential handling)
+- **Stage 4**: CSV File Export ✓
+  - Format CSV Output node generates CSV text with all fields
+  - Convert to Binary File node creates downloadable CSV file
+  - Binary data with proper MIME type (text/csv)
+  - Includes all original ticket fields + classification fields
+  - File named "classified_tickets.csv"
+  - Can be downloaded from n8n Cloud interface
 
-## Workflow Architecture (9 Nodes)
+## Workflow Architecture (10 Nodes)
 ```
 Manual Trigger 
   → Load and Parse CSV (50 tickets embedded)
-    → Limit to 1 (testing mode - preserves API quota)
-      → Call Gemini API (HTTP Request with continueOnFail)
-        → Check for Error (IF node)
-          ├─ TRUE: Error detected
-          │    → Wait 7 Seconds
-          │      → Retry Gemini API (HTTP Request)
-          │        → Parse Response with Fallback
-          └─ FALSE: Success
-               → Parse Response with Fallback
-                 → Fraud Validation Layer (rule-based override)
-                   → Format CSV Output (exports results)
+    → Split in Batches (batch size: 5)
+      ├─ Main output (per batch):
+      │   → Call Gemini API (HTTP Request with batching: 1 per 7s)
+      │     → Check for Error (IF node)
+      │       ├─ TRUE: Error detected
+      │       │    → Wait 7 Seconds
+      │       │      → Retry Gemini API (HTTP Request)
+      │       │        → Parse Response with Fallback
+      │       └─ FALSE: Success
+      │            → Parse Response with Fallback
+      │              → Fraud Validation Layer (rule-based override)
+      │                → Loop back to Split in Batches (next batch)
+      │
+      └─ Done output (after all batches):
+          → Aggregate All Results (collects all 50 classified tickets)
+            → Format CSV Output (generates single CSV text)
+              → Convert to Binary File (single downloadable CSV)
 ```
 
 ## Key Decisions
@@ -66,6 +79,10 @@ Manual Trigger
 - **Enhanced fraud keywords** with user behavior phrases ("not me", "someone else using", etc.)
 - **Manual trigger for workflow execution** (easier testing and control)
 - **Professional naming convention** (e.g., "Ticket Triage - Cloud Version", "Fraud Validation Layer")
+- **Batching enabled on HTTP Request nodes** (batch size: 1, interval: 7000ms to respect API rate limits)
+- **Split in Batches node** (processes 50 tickets in 10 batches of 5, with loop-back for next batch)
+- **Aggregate node** (collects all classified tickets from all batches, outputs to single CSV file)
+- **Per-item execution for Code nodes** (Parse Response and Fraud Validation process each ticket individually)
 
 ## Issues Resolved
 - Removed weak fraud keywords (e.g., "suspicious verification", "same selfie")
@@ -102,11 +119,10 @@ Manual Trigger
 - flag_for_review: false
 
 ## Next Steps
-1. **Test the error handling** with a single ticket to verify fallback behavior works correctly
-2. **Implement JSON schema enforcement** via `generationConfig.response_schema` (optional enhancement)
-3. **Export results** to permanent storage (Google Sheets, Database, or local file)
-4. **Remove "Limit to 1" node** and process all 50 tickets (when API quota permits)
-5. **Performance analysis**: Review classification accuracy and fraud detection rate
+1. **Test CSV file export** with 1 ticket to verify download works
+2. **Remove "Limit to 1" node** when ready to process all tickets
+3. **Process all 50 tickets** (when API quota permits)
+4. **Performance analysis**: Review classification accuracy and fraud detection rate
 
 ## Production Readiness
 ✅ Comprehensive classification prompt  
@@ -119,8 +135,9 @@ Manual Trigger
 ✅ API rate limit and quota handling (retry with delay)  
 ✅ Graceful fallback for all failure scenarios  
 ✅ Workflow stability (no unexpected crashes)  
+✅ CSV file export (downloadable binary file)  
 🔄 Pending: Full batch testing (50 tickets)  
-🔄 Pending: Results export to permanent storage  
+🔄 Pending: Production deployment  
 
 ## Documentation
 - `docs/N8N_CLOUD_SETUP.md` - Complete setup guide with step-by-step instructions
@@ -128,4 +145,4 @@ Manual Trigger
 - `docs/TESTING_GUIDE.md` - Testing guide for error handling verification
 - `prompts/classification_prompt.txt` - 128-line AI prompt with 6 rules
 - `prompts/fraud_keywords.txt` - 25 fraud indicator keywords
-- `n8n/ticket_triage_cloud.json` - 303-line workflow definition (9 nodes)
+- `n8n/ticket_triage_cloud.json` - 385-line workflow definition (10 nodes)
