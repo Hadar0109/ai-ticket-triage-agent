@@ -1,0 +1,629 @@
+{
+  "name": "AI Ticket Triage Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "AI Support Ticket Classification",
+        "formDescription": "Upload a CSV file containing customer support tickets.\n\nThe workflow will automatically classify each ticket by:\n• urgency level\n• issue category\n• fraud/security indicators\n\nAt the end of the process, a classified CSV file will be generated.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Upload CSV File",
+              "fieldType": "file",
+              "acceptFileTypes": ".csv"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ac3524a0-1a52-4b2a-81a6-7c93091fb2e5",
+      "name": "Upload Tickets CSV",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        544,
+        64
+      ],
+      "webhookId": "7ea19070-6c8d-47eb-b593-9cc91cc864dd"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "Upload_CSV_File",
+        "options": {
+          "headerRow": true
+        }
+      },
+      "id": "41d5548e-6ecd-4c52-a9fb-2e8b5227791d",
+      "name": "Parse Tickets CSV",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        736,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "id": "74e103ff-6135-42ee-b8f4-b61d2a20c15d",
+      "name": "Process Tickets In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        928,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "id": "fbd49706-d31d-454a-a168-4811a88b1105",
+      "name": "Rate Limit Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1136,
+        80
+      ],
+      "webhookId": "c7fd5d7c-c9e5-40e8-b27f-526e7ee90931"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst tickets = items.map((item, index) => {\n  const t = item.json;\n\n  const isEmpty =\n    (String(t.body || '').trim().length < 5);\n\n  return {\n    index,\n    ticket_id: t.ticket_id || String(index + 1),\n    created_at: t.created_at || '',\n    customer_name: t.customer_name || '',\n    customer_email: t.customer_email || '',\n    subject: t.subject || '',\n    body: t.body || '',\n    status: t.status || '',\n    _skip: isEmpty,\n    _fallback_reason: isEmpty ? 'empty_ticket' : ''\n  };\n});\n\nconst ticketsForLLM = tickets\n  .filter(t => !t._skip)\n  .map(t => ({\n    index: t.index,\n    ticket_id: t.ticket_id,\n    subject: t.subject,\n    body: t.body,\n    customer_name: t.customer_name,\n    customer_email: t.customer_email\n  }));\n\n// Prevents 400 Bad Request when a batch contains 100% skipped/empty tickets\nif (ticketsForLLM.length === 0) {\n  return [{\n    json: {\n      batchTickets: tickets,\n      skipGemini: true,\n      requestBody: {\n        contents: [\n          {\n            parts: [\n              { text: \"Return an empty array: []\" }\n            ]\n          }\n        ],\n        generationConfig: {\n          temperature: 0.1,\n          maxOutputTokens: 10,\n          responseMimeType: \"application/json\"\n        }\n      }\n    }\n  }];\n}\n\nconst prompt = `You are an expert support ticket triage analyst for AU10TIX, an identity verification and fraud prevention company.\nClassify each ticket in the JSON array independently. Return one object per ticket with the same index and ticket_id. Use only subject/body facts.\n\nCATEGORY (if multiple, pick highest):\n1. Fraud Concern - forged/tampered docs, stolen identity, impersonation, unauthorized account, suspicious patterns\n2. Account Access - login, password, 2FA, lockout, deactivated account\n3. Document Issue - upload/OCR/reject/format issues, verification mismatch, customer is verifying their own account\n4. Billing - invoices, charges, refunds, subscriptions\n5. General Inquiry - product/API/how-to/partnerships\n\nDocument Issue vs Fraud Concern: technical upload/OCR/format problems → Document Issue. Claims of misuse, \"not me\", wrong person on ID → Fraud Concern.\n\nURGENCY (ignore age/status):\nHigh = fraud/security, blocked verification, account takeover\nMedium = verification/access/billing issues\nLow = general questions, routine requests, minor/unclear non-urgent issues\n\nflag_for_review:\nSet to true only for clear fraud/security (fake/forged docs, stolen identity, impersonation, unauthorized use, suspicious multi-account patterns).\nOtherwise false.\n\nsummary:\nWrite one short plain-English sentence describing the customer's issue. No category names, no error codes.\n\nReturn ONLY a valid JSON array.\nDo not add markdown, explanations, or extra text.\n\nTickets JSON:\n${JSON.stringify(ticketsForLLM)}`;\n\nreturn [{\n  json: {\n    batchTickets: tickets,\n    skipGemini: false,\n    requestBody: {\n      contents: [\n        {\n          parts: [\n            { text: prompt }\n          ]\n        }\n      ],\n      generationConfig: {\n        temperature: 0.1,\n        maxOutputTokens: 1000,\n        responseMimeType: \"application/json\",\n        responseSchema: {\n          type: \"ARRAY\",\n          description: \"An array containing the classification results for each ticket.\",\n          items: {\n            type: \"OBJECT\",\n            properties: {\n              index: { type: \"INTEGER\" },\n              ticket_id: { type: \"STRING\" },\n              urgency: { type: \"STRING\", enum: [\"High\", \"Medium\", \"Low\"] },\n              category: { type: \"STRING\", enum: [\"Document Issue\", \"Account Access\", \"Billing\", \"Fraud Concern\", \"General Inquiry\"] },\n              summary: { type: \"STRING\" },\n              flag_for_review: { type: \"BOOLEAN\" }\n            },\n            required: [\"index\", \"ticket_id\", \"urgency\", \"category\", \"summary\", \"flag_for_review\"]\n          }\n        }\n      }\n    }\n  }\n}];"
+      },
+      "id": "7a4f41d9-79e7-4de9-aa3a-d66bba864005",
+      "name": "Build Gemini Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "40665b48-c516-467a-a05c-ff0537d2e18f",
+      "name": "Gemini Batch Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1488,
+        80
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3eNVAfA40ER2bFI5",
+          "name": "x-goog-api-key"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "amount": 50
+      },
+      "id": "5f7178bb-3605-494e-a198-faa18832ddba",
+      "name": "Retry Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1296,
+        304
+      ],
+      "webhookId": "d3cad5ff-2b31-4567-806d-91c778680625"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d52920ad-9548-4021-a37f-422737848394",
+      "name": "Gemini Batch Retry Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1488,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3eNVAfA40ER2bFI5",
+          "name": "x-goog-api-key"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\nconst originalBatch = $('Build Gemini Batch').item.json.batchTickets || [];\n\nconst VALID_URGENCY = ['High', 'Medium', 'Low'];\nconst VALID_CATEGORY = [\n  'Document Issue',\n  'Account Access',\n  'Billing',\n  'Fraud Concern',\n  'General Inquiry'\n];\n\nfunction fallbackFor(ticket, reason) {\n  let summary = 'LLM returned an invalid response format, so classification was replaced with a safe fallback.';\n\n  if (reason === 'empty_ticket') {\n    summary = 'No classification was needed because the ticket subject and body are empty or unreadable.';\n  }\n\n  if (reason === 'missing_llm_result') {\n    summary = 'LLM did not return a classification for this ticket, so a safe fallback was used.';\n  }\n\n  return {\n    ...ticket,\n    urgency: 'Low',\n    category: 'General Inquiry',\n    summary,\n    flag_for_review: false,\n    _fallback_reason: reason\n  };\n}\n\nfunction normalize(ticket, parsed) {\n  return {\n    ...ticket,\n    urgency: VALID_URGENCY.includes(parsed.urgency) ? parsed.urgency : 'Low',\n    category: VALID_CATEGORY.includes(parsed.category) ? parsed.category : 'General Inquiry',\n    summary: (parsed.summary || 'No summary provided.').substring(0, 200),\n    flag_for_review:\n      typeof parsed.flag_for_review === 'boolean'\n        ? parsed.flag_for_review\n        : String(parsed.flag_for_review).toLowerCase() === 'true',\n    _fallback_reason: ''\n  };\n}\n\ntry {\n  let raw = item.candidates?.[0]?.content?.parts?.[0]?.text || '';\n  \n  const startIdx = raw.indexOf('[');\n  const endIdx = raw.lastIndexOf(']');\n  \n  if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) {\n    throw new Error('No JSON array found');\n  }\n\n  const cleanedJson = raw.substring(startIdx, endIdx + 1);\n  const parsedArray = JSON.parse(cleanedJson);\n  if (!Array.isArray(parsedArray)) {\n    throw new Error('Parsed response is not an array');\n  }\n\n  const byIndex = new Map();\n  const byTicketId = new Map();\n\n  for (const result of parsedArray) {\n    if (result.index !== undefined) {\n      byIndex.set(Number(result.index), result);\n    }\n\n    if (result.ticket_id !== undefined) {\n      byTicketId.set(String(result.ticket_id), result);\n    }\n  }\n\n  return originalBatch.map((ticket) => {\n    if (ticket._skip) {\n      return { json: fallbackFor(ticket, 'empty_ticket') };\n    }\n\n    const result =\n      byIndex.get(Number(ticket.index)) ||\n      byTicketId.get(String(ticket.ticket_id));\n\n    if (!result) {\n      return { json: fallbackFor(ticket, 'missing_llm_result') };\n    }\n\n    return { json: normalize(ticket, result) };\n  });\n} catch (e) {\n  return originalBatch.map((ticket) => {\n    const reason = ticket._skip ? 'empty_ticket' : 'invalid_llm_response';\n    return { json: fallbackFor(ticket, reason) };\n  });\n}"
+      },
+      "id": "77426adb-0235-4956-8b12-f983fe97dea9",
+      "name": "Parse Gemini Batch Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const originalBatch = $('Build Gemini Batch').item.json.batchTickets || [];\n\nconst errorMessage =\n  $json.error?.message ||\n  $json.message ||\n  JSON.stringify($json);\n\nfunction getApiFallback() {\n  if (errorMessage.includes('429')) {\n    return {\n      reason: 'rate_limit_failure',\n      summary: 'Gemini API rate limit prevented LLM classification.'\n    };\n  }\n\n  if (errorMessage.includes('503') || errorMessage.toLowerCase().includes('unavailable')) {\n    return {\n      reason: 'model_unavailable',\n      summary: 'Gemini model was temporarily unavailable, so a safe fallback classification was used.'\n    };\n  }\n\n  if (\n    errorMessage.toLowerCase().includes('timeout') ||\n    errorMessage.toLowerCase().includes('timed out') ||\n    errorMessage.toLowerCase().includes('etimedout')\n  ) {\n    return {\n      reason: 'timeout_failure',\n      summary: 'Gemini API request timed out, so a safe fallback classification was used.'\n    };\n  }\n\n  return {\n    reason: 'api_or_request_failure',\n    summary: 'Gemini API request failed, so a safe fallback classification was used.'\n  };\n}\n\nconst apiFallback = getApiFallback();\n\nreturn originalBatch.map((ticket) => {\n  if (ticket._skip) {\n    return {\n      json: {\n        ...ticket,\n        urgency: 'Low',\n        category: 'General Inquiry',\n        summary: 'No classification was needed because the ticket subject and body are empty or unreadable.',\n        flag_for_review: false,\n        _fallback_reason: 'empty_ticket'\n      }\n    };\n  }\n\n  return {\n    json: {\n      ...ticket,\n      urgency: 'Low',\n      category: 'General Inquiry',\n      summary: apiFallback.summary,\n      flag_for_review: false,\n      _fallback_reason: apiFallback.reason\n    }\n  };\n});"
+      },
+      "id": "11df021d-5190-4f53-a18e-3161b1d04f38",
+      "name": "Generate Batch Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const ticket = $input.item.json;\n\nconst textToCheck = `${ticket.subject || ''} ${ticket.body || ''}`\n  .toLowerCase()\n  .replace(/[^\\w\\s']/g, ' ');\n\nconst fraudPatterns = [\n  /\\b(forged|forgery|fake id|fake document|fake passport|counterfeit|altered document|doctored|tampered|photoshopped)\\b/i,\n\n  /\\b(stolen identity|identity theft|my identity was stolen|stole my identity)\\b/i,\n\n  /\\b(impersonat\\w*|account takeover|compromised account|hijacked)\\b/i,\n\n  /\\b(unauthorized account|unauthorized access|without my permission)\\b/i,\n\n  /\\b(not mine|not my account|this wasn't me|this was not me)\\b/i,\n\n  /\\b(my id was used|id was used|used my documents|using my documents)\\b/i,\n\n  /\\b(opened an account in my name|account created in my name)\\b/i,\n\n  /\\b(i did not create this account|i didn't create this account)\\b/i,\n\n  /\\b(someone else is using|someone else used|someone pretending to be me)\\b/i,\n\n  /\\b(bypass kyc|bypass verification|disable verification)\\b/i,\n\n  /\\b(suspicious account|suspicious activity|suspicious verification|flag suspicious|looks suspicious|fraudulent|possible fraud|report fraud|fraud attempt)\\b/i,\n];\n\nconst normalMismatchPattern =\n  /\\b(middle name|name mismatch|passport mismatch|date of birth|dob mismatch|account information|verification mismatch|does not match|doesn't match)\\b/i;\n\nconst strongFraudPattern =\n  /\\b(forged|fake|tampered|stolen identity|identity theft|impersonat\\w*|unauthorized|without my permission|not mine|wasn't me|was not me|someone else|suspicious account|suspicious activity|suspicious verification|fraudulent|possible fraud|report fraud|fraud attempt)\\b/i;\n\nconst isNormalMismatch =\n  normalMismatchPattern.test(textToCheck) &&\n  !strongFraudPattern.test(textToCheck);\n\nlet localFraudDetected = false;\n\nif (!isNormalMismatch) {\n  for (const pattern of fraudPatterns) {\n    if (pattern.test(textToCheck)) {\n      localFraudDetected = true;\n      break;\n    }\n  }\n}\n\nif (localFraudDetected) {\n  ticket.category = 'Fraud Concern';\n  ticket.flag_for_review = true;\n  ticket.urgency = 'High';\n}\n\nif (localFraudDetected && ticket._fallback_reason === 'empty_ticket') {\n  ticket.summary =\n    'The ticket message was empty, but rule-based checks detected possible fraud indicators.';\n} else if (localFraudDetected && ticket._fallback_reason) {\n  ticket.summary =\n    'AI classification was unavailable, but rule-based checks detected possible fraud indicators.';\n}\n\nreturn { json: ticket };"
+      },
+      "id": "179606fe-3dcb-4f86-9379-57ea152745b8",
+      "name": "Rule-Based Fraud Detection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const j = { ...item.json };\n\n  delete j.index;\n  delete j._skip;\n  delete j._fallback_reason;\n\n  return { json: j };\n});"
+      },
+      "id": "198218aa-363d-4e32-954f-2bbc210025fd",
+      "name": "Finalize Batch Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function escapeCSV(value) {\n  if (value === null || value === undefined) {\n    return '';\n  }\n\n  let s = String(value);\n\n    // Security Gate: Neutralize leading formula characters (CSV Formula Injection Preventative Defense)\n    if (s.startsWith('=') || s.startsWith('+') || s.startsWith('-') || s.startsWith('@')) {\n    s = \"'\" + s;\n  }\n\n  if (\n    s.includes(',') ||\n    s.includes('\"') ||\n    s.includes('\\n') ||\n    s.includes('\\r')\n  ) {\n    return '\"' + s.replace(/\"/g, '\"\"') + '\"';\n  }\n\n  return s;\n}\n\nconst items = $input.all();\n\nconst headers = [\n  'ticket_id',\n  'created_at',\n  'customer_name',\n  'customer_email',\n  'subject',\n  'body',\n  'status',\n  'urgency',\n  'category',\n  'summary',\n  'flag_for_review'\n];\n\nlet csvContent = headers.join(',') + '\\n';\n\nfor (const item of items) {\n  const row = headers.map((h) => escapeCSV(item.json[h]));\n  csvContent += row.join(',') + '\\n';\n}\n\nreturn [\n  {\n    json: {\n      csvContent,\n      ticketCount: items.length\n    }\n  }\n];\n"
+      },
+      "id": "a1995cc1-9ce7-489b-8e6a-bd1000c5e005",
+      "name": "Build Final CSV Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2368,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const csvContent = $input.first().json.csvContent;\nconst ticketCount = $input.first().json.ticketCount;\n\nconst binaryData = Buffer.from(csvContent).toString('base64');\n\nreturn [\n  {\n    json: {\n      ticketCount,\n      message: `CSV file generated with ${ticketCount} ticket(s)`\n    },\n    binary: {\n      data: {\n        data: binaryData,\n        mimeType: 'text/csv',\n        fileName: 'classified_tickets.csv'\n      }\n    }\n  }\n];"
+      },
+      "id": "0a86e722-ee89-4e29-a151-47ab78ad794e",
+      "name": "Generate CSV File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Input Layer",
+        "height": 208,
+        "width": 342,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        512,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "92e916ea-74be-42b1-940f-a6bc7633b8f8",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Processing & LLM Layer",
+        "height": 480,
+        "width": 746
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        896,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "c2bc7884-3140-4f7b-9497-7162174ed805",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Fraud Detection Layer",
+        "height": 208,
+        "width": 166,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1936,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "7cf9d73c-05ae-4b1c-bc48-9ba4af36cc6d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Validation & Error Handling Layer",
+        "height": 480,
+        "width": 216,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1680,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "11507dea-7e95-4229-bb5c-3b713245c6eb",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "Export Layer",
+        "height": 208,
+        "width": 1156,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2128,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "c9c8380a-1a8e-498e-9e75-4195a55f4d27",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Classification Completed",
+        "completionMessage": "=<h3>Your classified CSV file is ready.</h3>\n\n<p>\n<a href=\"{{ $('Upload Classified CSV').item.json.webContentLink }}\" target=\"_blank\">\nDownload Classified CSV\n</a>\n</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        3104,
+        64
+      ],
+      "id": "04bfe4a9-b6c3-444c-bb8c-941be984b3c6",
+      "name": "Classification Complete",
+      "webhookId": "b5d75f85-0cbc-4dd1-847d-2f614efea117"
+    },
+    {
+      "parameters": {
+        "name": "classified_tickets.csv",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "12Gu1vApLERpD648k7D2Gfy0wHR0_XOZh",
+          "mode": "list",
+          "cachedResultName": "AI Ticket Triage Results",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/12Gu1vApLERpD648k7D2Gfy0wHR0_XOZh"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2720,
+        64
+      ],
+      "id": "f0f2b743-10d7-4c58-a1e4-c81260c23984",
+      "name": "Upload Classified CSV",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "ShkueXtHw8If7nmQ",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2912,
+        64
+      ],
+      "id": "7c657e4d-5037-43d5-8cfb-cbba93e40f59",
+      "name": "Share CSV Download Link",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "ShkueXtHw8If7nmQ",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Upload Tickets CSV": {
+      "main": [
+        [
+          {
+            "node": "Parse Tickets CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Tickets CSV": {
+      "main": [
+        [
+          {
+            "node": "Process Tickets In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Tickets In Batches": {
+      "main": [
+        [
+          {
+            "node": "Build Final CSV Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay": {
+      "main": [
+        [
+          {
+            "node": "Build Gemini Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Gemini Batch": {
+      "main": [
+        [
+          {
+            "node": "Gemini Batch Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Batch Call": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Batch Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Delay": {
+      "main": [
+        [
+          {
+            "node": "Gemini Batch Retry Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Batch Retry Call": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Batch Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Batch Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Batch Response": {
+      "main": [
+        [
+          {
+            "node": "Rule-Based Fraud Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Batch Fallback": {
+      "main": [
+        [
+          {
+            "node": "Rule-Based Fraud Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rule-Based Fraud Detection": {
+      "main": [
+        [
+          {
+            "node": "Finalize Batch Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Batch Results": {
+      "main": [
+        [
+          {
+            "node": "Process Tickets In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Final CSV Output": {
+      "main": [
+        [
+          {
+            "node": "Generate CSV File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate CSV File": {
+      "main": [
+        [
+          {
+            "node": "Upload Classified CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Classified CSV": {
+      "main": [
+        [
+          {
+            "node": "Share CSV Download Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Share CSV Download Link": {
+      "main": [
+        [
+          {
+            "node": "Classification Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "db2d1a6a-e67e-4c7e-9815-75b74915f24e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e923cf311da940951c03577e5b3bb9ad9db1e562bcaed26b4d4e1cf8014b2c19"
+  },
+  "id": "Nk91GYDSBvSv1OE8",
+  "tags": []
+}
