@@ -4,9 +4,6 @@
 # n8n data
 .n8n/
 
-# Output files (generated during testing)
-output/*.csv
-
 # OS files
 .DS_Store
 Thumbs.db
