@@ -15,13 +15,13 @@ The system automatically analyzes customer support tickets, classifies them, det
 
 You can try the workflow immediately or run your own copy:
 
-### Live demo (recommended)
+### Live demo (recommended):
 
 **[Open the ticket triage form](https://hadar.app.n8n.cloud/form/7ea19070-6c8d-47eb-b593-9cc91cc864dd)**
 
 upload a tickets CSV and download the classified file when the run finishes. No n8n account, API key, or local setup needed.
 
-### Import and run yourself
+### Import and run yourself:
 
 ### Requirements
 
@@ -92,9 +92,7 @@ The workflow classifies every ticket into:
 
 The workflow is divided into clear processing layers:
 
-```
 ![Workflow Screenshot](./images/n8n_workflow_screenshot.png)
-```
 
 ### 1. Input Layer
 
